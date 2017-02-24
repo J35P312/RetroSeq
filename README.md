@@ -37,7 +37,7 @@ Usage: retroseq.pl -discover -bam <string> -eref <string> -output <string> [-srm
 The discovery stage will produce an output file (specified by the -output parameter) with lists of read pair names per TE type. Multiple discovery stage outputs can be inputted to the calling phase (i.e. to allow parallelisation of the discovery phase).
 1 Discovery Phase - alignment
 
-Usage: python retroseq.py <ME_fasta> <candidate_fasta> <anchor_tab> <prefix> > output_file.tab
+Usage: python retroseq.py <ME_fasta> <candidate_fasta> <anchor_tab> > output_file.tab
 
 	ME_fasta - the file containing all ME fasta entries
 	candidate_fasta - the file containing FASTA entries of the extracted discordant pair

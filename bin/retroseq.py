@@ -5,7 +5,7 @@ import os
 ME_fasta=sys.argv[1]
 candidate_fasta=sys.argv[2]
 anchors=sys.argv[3]
-prefix=sys.argv[4]
+prefix=sys.argv[3].split(".")[0]
 
 anchor_structure={}
 chromosomes=[]
