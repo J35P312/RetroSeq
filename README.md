@@ -10,13 +10,13 @@ RetroSeq is a two phase process, the first being the read pair discovery phase w
 
 Dependencies
 -------------
-RetroSeq makes use of the [bedtools package](http://code.google.com/p/bedtools/), [samtools](https://github.com/samtools/samtools), [Exonerate] (http://www.ebi.ac.uk/~guy/exonerate/), and various common unix tools such as sort and grep. RetroSeq will check if these are installed and available in the default path.
+RetroSeq makes use of the [bedtools package](http://code.google.com/p/bedtools/), [samtools](https://github.com/samtools/samtools), BWA, and various common unix tools such as sort and grep. RetroSeq will check if these are installed and available in the default path.
 
 NOTE: RetroSeq has been primarily tested on BAM files produced by [MAQ](http://maq.sourceforge.net/) and [BWA](http://bio-bwa.sourceforge.net/). There is no guarantee it will work on BAM files from other aligners.
-
+NOTE: This is a modified version of Retroseq, the process of detecting insertions is divided in two steps, discovery, and alignment, whereas the alignment procedure is performed by BWA
 Using RetroSeq
 ================
-1 Discovery Phase
+1 Discovery Phase - discovery
 ------------------
 The goal here is to pass through the BAM and identify discordant read pairs that might support a TE insertion. You can either supply a tab delimited file specifying a set of TE types (e.g. Alu, LINE etc.) and the corresponding BED file of locations where these are in the reference genome (-refTEs parameter). Alternatively, you can provide a tab delimited file specifying a set of viral/TE types and the corresponding fasta file with a set of consensus sequences for these (-eref parameter).
 
@@ -35,6 +35,15 @@ Usage: retroseq.pl -discover -bam <string> -eref <string> -output <string> [-srm
     [-align     Do the computational expensive exonerate PE discordant mate alignment step]
 
 The discovery stage will produce an output file (specified by the -output parameter) with lists of read pair names per TE type. Multiple discovery stage outputs can be inputted to the calling phase (i.e. to allow parallelisation of the discovery phase).
+1 Discovery Phase - alignment
+
+Usage: python retroseq.py <ME_fasta> <candidate_fasta> <anchor_tab> <prefix> > output_file.tab
+
+	ME_fasta - the file containing all ME fasta entries
+	candidate_fasta - the file containing FASTA entries of the extracted discordant pair
+	ancor_tab - the file containing information on the positions of the anchors of the mate
+
+these files are produced from the initial discovery phase. The alignment step will use BWA to align the candidate discordant reads to the ME fasta. A tab output file will be printed as result, this tab file is used s input in the calling phase
 
 2 Calling
 ----------

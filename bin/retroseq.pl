@@ -180,7 +180,6 @@ USAGE
     
     #test for samtools
     RetroSeq::Utilities::checkBinary( q[samtools], qq[0.1.16], qq[0.1.19] );
-    RetroSeq::Utilities::checkBinary( q[exonerate], qq[2.2.0] ) if( $doAlign );
     RetroSeq::Utilities::checkBinary( q[bedtools] );
     
     _findCandidates( $bam, $erefs, $id, $length, $anchorQ, $output, $readgroups, $refTEsF, $excludeRegionsDis, $doAlign, $fractionOverlap, $clean );
@@ -292,10 +291,10 @@ sub _findCandidates
     }
     
     my $fastaCounter = 0;
-    my $candidatesFasta = $doAlign ? qq[$$.candidates.$fastaCounter.fasta] : undef;
-    my $candidatesBed = qq[$$.candidate_anchors.bed];
-    my $discordantMatesBed = qq[$$.discordant_mates.bed];
-    my $clipFasta = qq[$$.clip_candidates.fasta];
+    my $candidatesFasta = $doAlign ? qq[$output.candidates.$fastaCounter.fasta] : undef;
+    my $candidatesBed = qq[$output.candidate_anchors.bed];
+    my $discordantMatesBed = qq[$output.discordant_mates.bed];
+    my $clipFasta = qq[$output.clip_candidates.fasta];
     my %candidates = %{ _getCandidateTEReadNames($bam, $readgroups, $minAnchor, $candidatesFasta, $candidatesBed, $discordantMatesBed ) };
     
     print scalar( keys( %candidates ) ).qq[ candidate reads remain to be found after first pass....\n];
@@ -447,91 +446,7 @@ sub _findCandidates
             }
         }
     }
-    
-    if( $doAlign )
-    {
-        #create a single fasta file with all the TE ref seqs
-        my $refsFasta = qq[$$.allrefs.fasta];
-        open( my $tfh, qq[>$refsFasta] ) or die $!;
-        foreach my $type ( keys( %{ $erefs } ) )
-        {
-            open( my $sfh, $$erefs{ $type } ) or die $!;
-            my $seqCount = 1;
-            while( my $line = <$sfh>)
-            {
-                chomp( $line );
-                if( $line =~ /^>/ )
-                {
-                    print $tfh qq[>$type\n]; #call them all by the type label
-                }
-                else
-                {
-                    print $tfh qq[$line\n];
-                }
-            }
-            close( $sfh );
-        }
-        close( $tfh );
         
-        #if there arent any candidates, then we are done
-        if( -s $candidatesFasta == 0 )
-        {
-            if( $clean )
-            {
-                #delete the intermediate files
-                unlink( glob( qq[$$.*] ) ) or die qq[Failed to remove intermediate files: $!];
-            }
-            print qq[Failed to find any candidate reads - exiting];
-            exit;
-        }
-        
-        #run exonerate and parse the output from the stream (dump out hits for different refs to diff temp files)
-        #output format:                                                    read hitlen %id +/- refName
-        open( my $efh, qq[exonerate -m affine:local --bestn 5 --ryo "INFO: %qi %qal %pi %tS %ti\n"].qq[ $candidatesFasta $refsFasta | egrep "^INFO|completed" | ] ) or die qq[Exonerate failed to run: $!];
-        print qq[Parsing PE alignments....\n];
-        my $lastLine;
-        my %anchors;
-        while( my $hit = <$efh> )
-        {
-            chomp( $hit );
-            $lastLine = $hit;
-            last if ( $hit =~ /^-- completed/ );
-            
-            my @s = split( /\s+/, $hit );
-            #    check min identity	  check min length
-            if( $s[ 3 ] >= $id && $s[ 2 ] >= $length )
-            {
-                $anchors{ $s[ 1 ] } = [ $s[ 5 ], $s[ 4 ], $s[ 3 ] ]; #TE type, mate orientation, percent ID. This could be a memory issue (possibly dump out to a file and then use unix join to intersect with the bed)
-            }
-        }
-        close( $efh );
-        
-        if( $lastLine ne qq[-- completed exonerate analysis] ){die qq[Alignment did not complete correctly\n];}
-        
-        #now put all the anchors together into a single file per type
-        open( my $afh, qq[>>$output] ) or die $!;
-        open( my $cfh, $candidatesBed ) or die $!;
-        while( my $anchor = <$cfh> )
-        {
-            chomp( $anchor );
-            my @s = split( /\t/, $anchor );
-            if( defined( $anchors{ $s[ 3 ] } ) )
-            {
-                my $mate_orientation = $anchors{ $s[ 3 ] }[ 1 ];
-                my $type = $anchors{ $s[ 3 ] }[ 0 ];
-                #note the anchor orientation is contained is 3rd last, then mate orientation 2nd entry, and then percent id is last
-                print $afh qq[$s[0]\t$s[1]\t$s[2]\t$type\t$s[3]\t$s[4]\t$mate_orientation\t].$anchors{ $s[ 3 ] }[ 2 ].qq[\n];
-            }
-        }
-        close( $afh );close( $cfh );
-        undef( %anchors );
-    }
-    
-    if( $clean )
-    {
-        #delete the intermediate files
-        unlink( glob( qq[$$.*] ) ) or die qq[Failed to remove intermediate files: $!];
-    }
 }
 
 sub _findInsertions
